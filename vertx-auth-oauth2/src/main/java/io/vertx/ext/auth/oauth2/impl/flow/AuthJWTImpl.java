@@ -23,9 +23,9 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.oauth2.AccessToken;
 import io.vertx.ext.auth.oauth2.OAuth2Response;
-import io.vertx.ext.auth.oauth2.impl.AccessTokenImpl;
 import io.vertx.ext.auth.oauth2.impl.OAuth2API;
 import io.vertx.ext.auth.oauth2.impl.OAuth2AuthProviderImpl;
+import io.vertx.ext.auth.oauth2.impl.OAuth2TokenImpl;
 
 import java.io.UnsupportedEncodingException;
 
@@ -34,12 +34,19 @@ import static io.vertx.ext.auth.oauth2.impl.OAuth2API.*;
 /**
  * @author Paulo Lopes
  */
-public class AuthJWTImpl implements OAuth2Flow {
+public class AuthJWTImpl extends AbstractOAuth2Flow implements OAuth2Flow {
 
   private final OAuth2AuthProviderImpl provider;
 
   public AuthJWTImpl(OAuth2AuthProviderImpl provider) {
+    super(provider.getVertx(), provider.getConfig());
     this.provider = provider;
+    // validation
+    throwIfNull("clientId", config.getClientID());
+    throwIfNull("pubSecKeys", config.getPubSecKeys());
+    if (config.getPubSecKeys().size() == 0) {
+      throwIfNull("pubSecKey", null);
+    }
   }
 
   /**
@@ -53,10 +60,11 @@ public class AuthJWTImpl implements OAuth2Flow {
 
     final JsonObject body = new JsonObject()
       .put("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
-      .put("assertion", provider.sign(params));
+      .put("assertion", provider.getJWT().sign(params, provider.getConfig().getJWTOptions()));
 
     fetch(
-      provider,
+      provider.getVertx(),
+      provider.getConfig(),
       HttpMethod.POST,
       provider.getConfig().getTokenPath(),
       new JsonObject().put("Content-Type", "application/x-www-form-urlencoded"),
@@ -93,7 +101,7 @@ public class AuthJWTImpl implements OAuth2Flow {
           return;
         }
 
-        callback.handle(Future.succeededFuture(new AccessTokenImpl(provider, token)));
+        callback.handle(Future.succeededFuture(new OAuth2TokenImpl(provider, token)));
       });
   }
 }

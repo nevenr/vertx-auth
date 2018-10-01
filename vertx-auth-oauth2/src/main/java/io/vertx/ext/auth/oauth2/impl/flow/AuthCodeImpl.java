@@ -20,9 +20,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.oauth2.AccessToken;
-import io.vertx.ext.auth.oauth2.OAuth2ClientOptions;
-import io.vertx.ext.auth.oauth2.impl.AccessTokenImpl;
 import io.vertx.ext.auth.oauth2.impl.OAuth2AuthProviderImpl;
+import io.vertx.ext.auth.oauth2.impl.OAuth2TokenImpl;
 
 import static io.vertx.ext.auth.oauth2.impl.OAuth2API.*;
 
@@ -31,22 +30,26 @@ import static io.vertx.ext.auth.oauth2.impl.OAuth2API.*;
  */
 public class AuthCodeImpl extends AbstractOAuth2Flow implements OAuth2Flow {
 
+  private final OAuth2AuthProviderImpl provider;
+
   public AuthCodeImpl(OAuth2AuthProviderImpl provider) {
-    super(provider);
+    super(provider.getVertx(), provider.getConfig());
+    this.provider = provider;
+    // validation
+    throwIfNull("clientId", config.getClientID());
   }
 
   /**
-   * Redirect the user to the authorization page
+   * Construct the URL to be used to redirect the user to the authorization page of the OAuth "Authorization Server"
    *
    * @param params - redirectURI: A String that represents the registered application URI where the user is redirected after authorization.
-   *               scope:       A String that represents the application privileges.
+   *               scope:       A String that represents the application privileges. Set to "openid" for OpenID Connect.
    *               scopes:      A array of strings that will encoded as a single string "scope" following the provider requirements
    *               state:       A String that represents an optional opaque value used by the client to maintain state between the request and the callback.
    */
   @Override
   public String authorizeURL(JsonObject params) {
     final JsonObject query = params.copy();
-    final OAuth2ClientOptions config = provider.getConfig();
 
     if (query.containsKey("scopes")) {
       // scopes have been passed as a list so the provider must generate the correct string for it
@@ -57,7 +60,10 @@ public class AuthCodeImpl extends AbstractOAuth2Flow implements OAuth2Flow {
     query.put("response_type", "code");
     query.put("client_id", config.getClientID());
 
-    return config.getSite() + config.getAuthorizationPath() + '?' + stringify(query);
+    final String path = config.getAuthorizationPath();
+    final String url = path.charAt(0) == '/' ? config.getSite() + path : path;
+
+    return url + '?' + stringify(query);
   }
 
   /**
@@ -78,7 +84,7 @@ public class AuthCodeImpl extends AbstractOAuth2Flow implements OAuth2Flow {
       AccessToken token;
 
       try {
-        token = new AccessTokenImpl(provider, res.result());
+        token = new OAuth2TokenImpl(provider, res.result());
       } catch (RuntimeException e) {
         handler.handle(Future.failedFuture(e));
         return;

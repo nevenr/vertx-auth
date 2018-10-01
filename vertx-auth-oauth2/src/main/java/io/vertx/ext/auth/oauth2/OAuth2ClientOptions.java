@@ -21,6 +21,10 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
+import io.vertx.ext.jwt.JWTOptions;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Options describing how an OAuth2 {@link HttpClient} will make connections.
@@ -31,19 +35,23 @@ import io.vertx.ext.auth.PubSecKeyOptions;
 public class OAuth2ClientOptions extends HttpClientOptions {
 
   // Defaults
+  private static final OAuth2FlowType FLOW = OAuth2FlowType.AUTH_CODE;
   private static final String AUTHORIZATION_PATH = "/oauth/authorize";
   private static final String TOKEN_PATH = "/oauth/token";
   private static final String REVOKATION_PATH = "/oauth/revoke";
   private static final boolean USE_BASIC_AUTHORIZATION_HEADER = true;
   private static final String CLIENT_SECRET_PARAMETER_NAME = "client_secret";
-  private static final boolean JWT_TOKEN = false;
+  private static final JWTOptions JWT_OPTIONS = new JWTOptions();
   private static final String SCOPE_SEPARATOR = " ";
+  private static final boolean VALIDATE_ISSUER = true;
 
+  private OAuth2FlowType flow;
   private String authorizationPath;
   private String tokenPath;
   private String revocationPath;
   private String scopeSeparator;
   // this is an openid-connect extension
+  private boolean validateIssuer;
   private String logoutPath;
   private boolean useBasicAuthorizationHeader;
   private String clientSecretParameterName;
@@ -52,14 +60,16 @@ public class OAuth2ClientOptions extends HttpClientOptions {
   private JsonObject userInfoParams;
   // introspection RFC7662
   private String introspectionPath;
+  // JWK path RFC7517
+  private String jwkPath;
 
   private String site;
   private String clientID;
   private String clientSecret;
   private String userAgent;
   private JsonObject headers;
-  private PubSecKeyOptions pubSecKey;
-  private boolean jwtToken;
+  private List<PubSecKeyOptions> pubSecKeys;
+  private JWTOptions jwtOptions;
   // extra parameters to be added while requesting a token
   private JsonObject extraParams;
 
@@ -93,6 +103,8 @@ public class OAuth2ClientOptions extends HttpClientOptions {
   public OAuth2ClientOptions(OAuth2ClientOptions other) {
     super(other);
     // defaults
+    validateIssuer = other.isValidateIssuer();
+    flow = other.getFlow();
     authorizationPath = other.getAuthorizationPath();
     tokenPath = other.getTokenPath();
     revocationPath = other.getRevocationPath();
@@ -105,8 +117,9 @@ public class OAuth2ClientOptions extends HttpClientOptions {
     site = other.getSite();
     clientID = other.getClientID();
     clientSecret = other.getClientSecret();
-    pubSecKey = other.getPubSecKey();
-    jwtToken = other.isJwtToken();
+    pubSecKeys = other.getPubSecKeys();
+    // jwt options
+    jwtOptions = other.getJWTOptions();
     logoutPath = other.getLogoutPath();
     // extras
     final JsonObject obj = other.getExtraParameters();
@@ -129,17 +142,20 @@ public class OAuth2ClientOptions extends HttpClientOptions {
     } else {
       headers = null;
     }
+    // JWK path RFC7517
+    jwkPath = other.getJwkPath();
   }
 
   private void init() {
+    flow = FLOW;
+    validateIssuer = VALIDATE_ISSUER;
     authorizationPath = AUTHORIZATION_PATH;
     tokenPath = TOKEN_PATH;
     revocationPath = REVOKATION_PATH;
     scopeSeparator = SCOPE_SEPARATOR;
     useBasicAuthorizationHeader = USE_BASIC_AUTHORIZATION_HEADER;
     clientSecretParameterName = CLIENT_SECRET_PARAMETER_NAME;
-    jwtToken = JWT_TOKEN;
-    extraParams = null;
+    jwtOptions = JWT_OPTIONS;
     userInfoParams = null;
     headers = null;
   }
@@ -323,30 +339,20 @@ public class OAuth2ClientOptions extends HttpClientOptions {
    * The provider PubSec key options
    * @return the pub sec key options
    */
-  public PubSecKeyOptions getPubSecKey() {
-    return pubSecKey;
+  public List<PubSecKeyOptions> getPubSecKeys() {
+    return pubSecKeys;
   }
 
-  public OAuth2ClientOptions setPubSecKeyOptions(PubSecKeyOptions pubSecKey) {
-    this.pubSecKey = pubSecKey;
+  public OAuth2ClientOptions setPubSecKeys(List<PubSecKeyOptions> pubSecKeys) {
+    this.pubSecKeys = pubSecKeys;
     return this;
   }
 
-  /**
-   * Flag if this provider returns tokens in JWT format
-   * @return boolean
-   */
-  public boolean isJwtToken() {
-    return jwtToken;
-  }
-
-  /**
-   * Signal that this provider tokens are in JWT format
-   * @param jwtToken true or false
-   * @return self
-   */
-  public OAuth2ClientOptions setJwtToken(boolean jwtToken) {
-    this.jwtToken = jwtToken;
+  public OAuth2ClientOptions addPubSecKey(PubSecKeyOptions pubSecKey) {
+    if (pubSecKeys == null) {
+      pubSecKeys = new ArrayList<>();
+    }
+    pubSecKeys.add(pubSecKey);
     return this;
   }
 
@@ -455,6 +461,42 @@ public class OAuth2ClientOptions extends HttpClientOptions {
    */
   public OAuth2ClientOptions setUserInfoParameters(JsonObject userInfoParams) {
     this.userInfoParams = userInfoParams;
+    return this;
+  }
+
+  public String getJwkPath() {
+    return jwkPath;
+  }
+
+  public OAuth2ClientOptions setJwkPath(String jwkPath) {
+    this.jwkPath = jwkPath;
+    return this;
+  }
+
+  public JWTOptions getJWTOptions() {
+    return jwtOptions;
+  }
+
+  public OAuth2ClientOptions setJWTOptions(JWTOptions jwtOptions) {
+    this.jwtOptions = jwtOptions;
+    return this;
+  }
+
+  public OAuth2FlowType getFlow() {
+    return flow;
+  }
+
+  public OAuth2ClientOptions setFlow(OAuth2FlowType flow) {
+    this.flow = flow;
+    return this;
+  }
+
+  public boolean isValidateIssuer() {
+    return validateIssuer;
+  }
+
+  public OAuth2ClientOptions setValidateIssuer(boolean validateIssuer) {
+    this.validateIssuer = validateIssuer;
     return this;
   }
 }

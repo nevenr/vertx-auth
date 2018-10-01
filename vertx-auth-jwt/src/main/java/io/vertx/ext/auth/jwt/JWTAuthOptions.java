@@ -20,6 +20,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.KeyStoreOptions;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.SecretOptions;
+import io.vertx.ext.jwt.JWTOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,18 +35,14 @@ public class JWTAuthOptions {
 
   // Defaults
   private static final String PERMISSIONS_CLAIM_KEY = "permissions";
-  private static final boolean IGNORE_EXPIRATION = false;
-  private static final int LEEWAY = 0;
-
+  private static final JWTOptions JWT_OPTIONS = new JWTOptions();
 
   private String permissionsClaimKey;
   private KeyStoreOptions keyStore;
   private List<PubSecKeyOptions> pubSecKeys;
   private List<SecretOptions> secrets;
-  private List<String> audience;
-  private String issuer;
-  private boolean ignoreExpiration;
-  private int leeway;
+  private JWTOptions jwtOptions;
+  private List<JsonObject> jwks;
 
   /**
    * Default constructor
@@ -64,16 +61,13 @@ public class JWTAuthOptions {
     keyStore = other.getKeyStore();
     pubSecKeys = other.getPubSecKeys();
     secrets = other.getSecrets();
-    audience = other.getAudience();
-    issuer = other.getIssuer();
-    ignoreExpiration = other.isIgnoreExpiration();
-    leeway = other.getLeeway();
+    jwtOptions = other.getJWTOptions();
+    jwks = other.getJwks();
   }
 
   private void init() {
     permissionsClaimKey = PERMISSIONS_CLAIM_KEY;
-    ignoreExpiration = IGNORE_EXPIRATION;
-    leeway = LEEWAY;
+    jwtOptions = JWT_OPTIONS;
   }
 
   /**
@@ -114,14 +108,18 @@ public class JWTAuthOptions {
     return this;
   }
 
+  @Deprecated
   public List<SecretOptions> getSecrets() {
     return secrets;
   }
 
-  public void setSecrets(List<SecretOptions> secrets) {
+  @Deprecated
+  public JWTAuthOptions setSecrets(List<SecretOptions> secrets) {
     this.secrets = secrets;
+    return this;
   }
 
+  @Deprecated
   public JWTAuthOptions addSecret(SecretOptions secret) {
     if (this.secrets == null) {
       this.secrets = new ArrayList<>();
@@ -138,72 +136,30 @@ public class JWTAuthOptions {
     return this;
   }
 
-  public List<String> getAudience() {
-    return audience;
+  public JWTOptions getJWTOptions() {
+    return jwtOptions;
   }
 
-  /**
-   * Set the audience list
-   * @param audience  the audience list
-   * @return a reference to this for fluency
-   */
-  public JWTAuthOptions setAudience(List<String> audience) {
-    this.audience = audience;
+  public JWTAuthOptions setJWTOptions(JWTOptions jwtOptions) {
+    this.jwtOptions = jwtOptions;
     return this;
   }
 
-  /**
-   * Set the audience list
-   * @param audience  the audience list
-   * @return a reference to this for fluency
-   */
-  public JWTAuthOptions addAudience(String audience) {
-    if (this.audience == null) {
-      this.audience = new ArrayList<>();
+  public List<JsonObject> getJwks() {
+    return jwks;
+  }
+
+  public JWTAuthOptions setJwks(List<JsonObject> jwks) {
+    this.jwks = jwks;
+    return this;
+  }
+
+  public JWTAuthOptions addJwk(JsonObject jwk) {
+    if (this.jwks == null) {
+      this.jwks = new ArrayList<>();
     }
-    this.audience.add(audience);
-    return this;
-  }
 
-  public String getIssuer() {
-    return issuer;
-  }
-
-  /**
-   * Set the issuer
-   * @param issuer  the issuer
-   * @return a reference to this for fluency
-   */
-  public JWTAuthOptions setIssuer(String issuer) {
-    this.issuer = issuer;
-    return this;
-  }
-
-  public boolean isIgnoreExpiration() {
-    return ignoreExpiration;
-  }
-
-  /**
-   * Set whether expiration is ignored
-   * @param ignoreExpiration  whether expiration is ignored
-   * @return a reference to this for fluency
-   */
-  public JWTAuthOptions setIgnoreExpiration(boolean ignoreExpiration) {
-    this.ignoreExpiration = ignoreExpiration;
-    return this;
-  }
-
-  public int getLeeway() {
-    return leeway;
-  }
-
-  /**
-   * Set the leeway in seconds
-   * @param leeway  in seconds
-   * @return a reference to this for fluency
-   */
-  public JWTAuthOptions setLeeway(int leeway) {
-    this.leeway = leeway;
+    this.jwks.add(jwk);
     return this;
   }
 }

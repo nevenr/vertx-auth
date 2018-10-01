@@ -21,7 +21,8 @@ import io.vertx.ext.auth.KeyStoreOptions;
 import io.vertx.ext.auth.SecretOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.auth.jwt.JWTOptions;
+import io.vertx.ext.jwt.JWK;
+import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.test.core.VertxTestBase;
 import org.junit.Test;
 
@@ -80,7 +81,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
     authProvider.authenticate(authInfo, onSuccess(user -> {
       assertNotNull(user);
 
-      user.isAuthorised("write", onSuccess(res -> {
+      user.isAuthorized("write", onSuccess(res -> {
         assertNotNull(res);
         testComplete();
       }));
@@ -94,7 +95,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
     authProvider.authenticate(authInfo, onSuccess(user -> {
       assertNotNull(user);
 
-      user.isAuthorised("drop", onSuccess(hasPermission -> {
+      user.isAuthorized("drop", onSuccess(hasPermission -> {
         assertFalse(hasPermission);
         testComplete();
       }));
@@ -141,7 +142,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
       .put("sub", "Paulo");
 
     final String token = authProvider.generateToken(payload,
-      new JWTOptions().setExpiresInMinutes(5L).setNoTimestamp(true));
+      new JWTOptions().setExpiresInMinutes(5).setNoTimestamp(true));
 
     assertNotNull(token);
 
@@ -180,15 +181,18 @@ public class JWTAuthProviderTest extends VertxTestBase {
       .put("sub", "Paulo");
 
     final String token = authProvider.generateToken(payload,
-      new JWTOptions().setExpiresInMinutes(-5L).setNoTimestamp(true));
+      new JWTOptions().setExpiresInSeconds(1).setNoTimestamp(true));
 
     assertNotNull(token);
 
-    JsonObject authInfo = new JsonObject().put("jwt", token);
-    authProvider.authenticate(authInfo, onFailure(thr -> {
-      assertNotNull(thr);
-      testComplete();
-    }));
+    vertx.setTimer(2000L, t -> {
+      JsonObject authInfo = new JsonObject().put("jwt", token);
+      authProvider.authenticate(authInfo, onFailure(thr -> {
+        assertNotNull(thr);
+        testComplete();
+      }));
+    });
+
     await();
   }
 
@@ -215,7 +219,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
   @Test
   public void testBadIssuer() {
 
-    authProvider = JWTAuth.create(vertx, getConfig().setIssuer("https://vertx.io"));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(new JWTOptions().setIssuer("https://vertx.io")));
 
     JsonObject payload = new JsonObject().put("sub", "Paulo");
 
@@ -257,9 +261,10 @@ public class JWTAuthProviderTest extends VertxTestBase {
   @Test
   public void testBadAudience() {
 
-    authProvider = JWTAuth.create(vertx, getConfig()
-      .addAudience("e")
-      .addAudience("d"));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(
+      new JWTOptions()
+        .addAudience("e")
+        .addAudience("d")));
 
     JsonObject payload = new JsonObject()
       .put("sub", "Paulo");
@@ -308,8 +313,8 @@ public class JWTAuthProviderTest extends VertxTestBase {
   public void testGenerateNewTokenWithMacSecret() {
     authProvider = JWTAuth.create(vertx, new JWTAuthOptions()
       .addSecret(new SecretOptions()
-      .setType("HS256")
-      .setSecret("notasecret"))
+        .setType("HS256")
+        .setSecret("notasecret"))
     );
 
     String token = authProvider.generateToken(new JsonObject(), new JWTOptions().setAlgorithm("HS256"));
@@ -432,7 +437,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
 
   @Test
   public void testLeeway() {
-    authProvider = JWTAuth.create(vertx, getConfig().setLeeway(0));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(new JWTOptions().setLeeway(0)));
 
     long now = System.currentTimeMillis() / 1000;
 
@@ -451,7 +456,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
 
   @Test
   public void testLeeway2() {
-    authProvider = JWTAuth.create(vertx, getConfig().setLeeway(0));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(new JWTOptions().setLeeway(0)));
 
     long now = (System.currentTimeMillis() / 1000) + 2;
 
@@ -470,7 +475,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
 
   @Test
   public void testLeeway3() {
-    authProvider = JWTAuth.create(vertx, getConfig().setLeeway(5));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(new JWTOptions().setLeeway(5)));
 
     long now = System.currentTimeMillis() / 1000;
 
@@ -490,7 +495,7 @@ public class JWTAuthProviderTest extends VertxTestBase {
 
   @Test
   public void testLeeway4() {
-    authProvider = JWTAuth.create(vertx, getConfig().setLeeway(5));
+    authProvider = JWTAuth.create(vertx, getConfig().setJWTOptions(new JWTOptions().setLeeway(5)));
 
     long now = (System.currentTimeMillis() / 1000) + 2;
 
@@ -505,5 +510,18 @@ public class JWTAuthProviderTest extends VertxTestBase {
     // pass because iat is > now (clock drifted 2 sec) and we have a leeway of 5sec
     authProvider.authenticate(authInfo, onSuccess(t -> testComplete()));
     await();
+  }
+
+  @Test
+  public void testJWKShouldNotCrash() {
+
+    authProvider = JWTAuth.create(vertx, new JWTAuthOptions().addJwk(
+      new JsonObject()
+      .put("kty", "RSA")
+      .put("n", "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw")
+      .put("e", "AQAB")
+      .put("alg", "RS256")
+      .put("kid", "2011-04-29")));
+
   }
 }

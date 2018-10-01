@@ -21,7 +21,7 @@
   <parent>
     <artifactId>vertx-auth</artifactId>
     <groupId>io.vertx</groupId>
-    <version>3.5.1-SNAPSHOT</version>
+    <version>3.6.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -61,19 +61,7 @@
         <configuration>
           <bnd><![CDATA[
           Import-Package: \
-            groovy.lang.*;resolution:=optional,\
-            org.codehaus.groovy.*;resolution:=optional,\
-            kotlin.*;resolution:=optional,\
-            io.vertx.groovy.*;resolution:=optional,\
-            io.vertx.lang.rxjava.*;resolution:=optional,\
-            io.vertx.lang.groovy.*;resolution:=optional,\
             io.vertx.codegen.annotations;resolution:=optional,\
-            io.vertx.rx.java;resolution:=optional,\
-            io.vertx.rxjava.core.*;resolution:=optional,\
-            rx.*;resolution:=optional,\
-            io.reactivex.*;resolution:=optional,\
-            io.vertx.reactivex.*;resolution:=optional,\
-            io.vertx.lang.reactivex.*;resolution:=optional,\
             *
           -exportcontents: !*impl, !examples, *
           ]]></bnd>

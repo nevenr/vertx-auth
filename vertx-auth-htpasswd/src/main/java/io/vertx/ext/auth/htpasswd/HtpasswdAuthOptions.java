@@ -1,6 +1,23 @@
+/*
+ * Copyright 2014 Red Hat, Inc.
+ *
+ *  All rights reserved. This program and the accompanying materials
+ *  are made available under the terms of the Eclipse Public License v1.0
+ *  and Apache License v2.0 which accompanies this distribution.
+ *
+ *  The Eclipse Public License is available at
+ *  http://www.eclipse.org/legal/epl-v10.html
+ *
+ *  The Apache License v2.0 is available at
+ *  http://www.opensource.org/licenses/apache2.0.php
+ *
+ *  You may elect to redistribute this code under either of these licenses.
+ */
 package io.vertx.ext.auth.htpasswd;
 
+import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.AuthOptions;
 import io.vertx.ext.auth.AuthProvider;
 
@@ -9,53 +26,44 @@ import io.vertx.ext.auth.AuthProvider;
  *
  * @author Neven Radovanović
  */
+@DataObject(generateConverter = true)
 public class HtpasswdAuthOptions implements AuthOptions {
 
-  private boolean usersAuthorizedForEverything;
   private String htpasswdFile;
-  private boolean enabledPlainTextPwd;
+  private boolean plainTextEnabled;
 
   public HtpasswdAuthOptions() {
+    htpasswdFile = ".htpasswd";
+    plainTextEnabled = false;
+  }
 
-    htpasswdFile = "htpasswd";
-
-    String os = System.getProperty("os.name").toLowerCase();
-    enabledPlainTextPwd = os.startsWith("windows") || os.startsWith("netware");
-
-    usersAuthorizedForEverything = false;
-
+  public HtpasswdAuthOptions(JsonObject json) {
+    this();
+    HtpasswdAuthOptionsConverter.fromJson(json, this);
   }
 
   public HtpasswdAuthOptions(HtpasswdAuthOptions that) {
+    this();
     this.htpasswdFile = that.htpasswdFile;
-    this.enabledPlainTextPwd = that.enabledPlainTextPwd;
+    this.plainTextEnabled = that.plainTextEnabled;
   }
 
-  public HtpasswdAuthOptions enablePlainTextAndDisableCryptPwd() {
-    enabledPlainTextPwd = true;
+  public HtpasswdAuthOptions setPlainTextEnabled(boolean plainTextEnabled) {
+    this.plainTextEnabled = plainTextEnabled;
     return this;
-
   }
 
-  public HtpasswdAuthOptions enableCryptAndDisablePlainTextPwd() {
-    enabledPlainTextPwd = false;
-    return this;
+  public boolean isPlainTextEnabled() {
+    return plainTextEnabled;
   }
 
   public String getHtpasswdFile() {
     return htpasswdFile;
   }
 
-  public void setHtpasswdFile(String htpasswdFile) {
+  public HtpasswdAuthOptions setHtpasswdFile(String htpasswdFile) {
     this.htpasswdFile = htpasswdFile;
-  }
-
-  public boolean isEnabledPlainTextPwd() {
-    return enabledPlainTextPwd;
-  }
-
-  public boolean isEnabledCryptPwd() {
-    return !enabledPlainTextPwd;
+    return this;
   }
 
   @Override
@@ -68,12 +76,9 @@ public class HtpasswdAuthOptions implements AuthOptions {
     return HtpasswdAuth.create(vertx, this);
   }
 
-  public boolean areUsersAuthorizedForEverything() {
-    return usersAuthorizedForEverything;
-  }
-
-  public HtpasswdAuthOptions setUsersAuthorizedForEverything(boolean usersAuthorizedForEverything) {
-    this.usersAuthorizedForEverything = usersAuthorizedForEverything;
-    return this;
+  public JsonObject toJson() {
+    final JsonObject json = new JsonObject();
+    HtpasswdAuthOptionsConverter.toJson(this, json);
+    return json;
   }
 }

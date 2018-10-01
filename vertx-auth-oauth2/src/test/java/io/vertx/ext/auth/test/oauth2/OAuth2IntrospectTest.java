@@ -7,7 +7,6 @@ import io.vertx.ext.auth.oauth2.AccessToken;
 import io.vertx.ext.auth.oauth2.OAuth2Auth;
 import io.vertx.ext.auth.oauth2.OAuth2ClientOptions;
 import io.vertx.ext.auth.oauth2.OAuth2FlowType;
-import io.vertx.ext.auth.oauth2.impl.OAuth2AuthProviderImpl;
 import io.vertx.test.core.VertxTestBase;
 import org.junit.Test;
 
@@ -134,6 +133,12 @@ public class OAuth2IntrospectTest extends VertxTestBase {
         principal.remove("access_token");
 
         final JsonObject assertion = fixtureIntrospect.copy();
+        // remove control fields
+        assertion.remove("active");
+        assertion.remove("exp");
+        assertion.remove("iat");
+        assertion.remove("nbf");
+        principal.remove("expires_in");
 
         assertEquals(assertion.getMap(), principal.getMap());
 
@@ -169,8 +174,12 @@ public class OAuth2IntrospectTest extends VertxTestBase {
         // clean time specific value
         principal.remove("expires_at");
         principal.remove("access_token");
+        // clean up control
+        final JsonObject assertion = fixtureGoogle.copy();
+        assertion.remove("audience");
+        assertion.remove("user_id");
 
-        assertEquals(fixtureGoogle.getMap(), principal.getMap());
+        assertEquals(assertion.getMap(), principal.getMap());
 
         token.isAuthorized("profile", res0 -> {
           if (res0.failed()) {
@@ -203,18 +212,15 @@ public class OAuth2IntrospectTest extends VertxTestBase {
 
   @Test
   public void introspectAccessTokenKeyCloakWay() {
-    ((OAuth2AuthProviderImpl) oauth2).getConfig().setJwtToken(true);
     config = oauthIntrospect;
     fixture = fixtureKeycloak;
     oauth2.introspectToken(token, res -> {
       if (res.failed()) {
-        fail(res.cause().getMessage());
+        fail(res.cause());
       } else {
         AccessToken token = res.result();
         assertNotNull(token);
-        JsonObject principal = token.principal();
-
-        assertTrue(principal.getBoolean("active"));
+        assertNotNull(token.principal());
         testComplete();
       }
     });
